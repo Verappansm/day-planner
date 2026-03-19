@@ -8,21 +8,21 @@ export async function signInWithGoogle() {
   const supabase = await createClient()
   const headersList = await headers()
   
-  // host will be "localhost:3000" or "day-planner-amber.vercel.app"
-  const host = headersList.get('host')
-  const protocol = host?.includes('localhost') ? 'http' : 'https'
+  // Vercel-specific: x-forwarded-host is the most reliable way to get 
+  // the domain the user is actually visiting in their browser.
+  const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3000'
+  const protocol = host.includes('localhost') ? 'http' : 'https'
   
-  // Fallback to construction if NEXT_PUBLIC_SITE_URL is missing
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL 
-    ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
-    : `${protocol}://${host}`
+  // Prioritize the domain the user is currently on
+  const origin = `${protocol}://${host}`
 
-  console.log('Redirecting to:', `${siteUrl}/auth/callback`)
+  console.log('Detected origin:', origin)
+  console.log('Redirecting to:', `${origin}/auth/callback`)
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${siteUrl}/auth/callback`,
+      redirectTo: `${origin}/auth/callback`,
     },
   })
 
