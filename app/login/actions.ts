@@ -7,29 +7,29 @@ import { headers } from 'next/headers'
 export async function signInWithGoogle() {
   const supabase = await createClient()
   const headersList = await headers()
-
-  // Derive the real origin from request headers — works reliably on Vercel and locally.
-  // x-forwarded-host is set by Vercel (and most proxies) and is always the real hostname.
-  const host =
-    headersList.get('x-forwarded-host') ||
-    headersList.get('host') ||
-    'localhost:3000'
-
-  const proto =
-    headersList.get('x-forwarded-proto') ||
-    (host.startsWith('localhost') ? 'http' : 'https')
-
-  // Allow explicit override via env var (e.g. for custom domains)
-  const origin = process.env.NEXT_PUBLIC_SITE_URL
+  
+  // host will be "localhost:3000" or "day-planner-amber.vercel.app"
+  const host = headersList.get('host')
+  const protocol = host?.includes('localhost') ? 'http' : 'https'
+  
+  // Fallback to construction if NEXT_PUBLIC_SITE_URL is missing
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL 
     ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
-    : `${proto}://${host}`
+    : `${protocol}://${host}`
 
-  const { data } = await supabase.auth.signInWithOAuth({
+  console.log('Redirecting to:', `${siteUrl}/auth/callback`)
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${siteUrl}/auth/callback`,
     },
   })
+
+  if (error) {
+    console.error('OAuth Error:', error)
+    return redirect(`/login?error=${encodeURIComponent(error.message)}`)
+  }
 
   if (data.url) {
     redirect(data.url)
